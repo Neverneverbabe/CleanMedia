@@ -3,7 +3,9 @@
 import cv2
 import json
 import os
-# from tensorflow.keras.models import load_model # Example for AI model
+from collections import deque
+
+# from tensorflow.keras.models import load_model  # Example for AI model
 
 def load_filters(filters_path='config/filters.json'):
     """Loads filter settings from a JSON file."""
@@ -14,10 +16,13 @@ def load_filters(filters_path='config/filters.json'):
 
 def scan_video_for_content(video_path, filters):
     """
-    Scans a video file for nudity and violence using (placeholder) AI models.
-    This is a highly conceptual implementation. Real-world AI models for
-    nudity and violence detection are complex and require significant
-    computational resources and specialized datasets.
+    Scans a video file for nudity and violence.  The implementation here
+    uses very lightweight heuristics so the function works without heavy
+    machine learning dependencies.  It checks the percentage of skin-toned
+    pixels to approximate nudity and the percentage of red pixels to
+    approximate violence.  These heuristics are obviously simplistic but
+    allow the rest of the pipeline to function while a real model is being
+    integrated.
 
     Args:
         video_path (str): Path to the input video file.
@@ -61,52 +66,53 @@ def scan_video_for_content(video_path, filters):
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print(f"Video FPS: {fps}, Total Frames: {frame_count}")
 
-    frame_interval = int(fps) # Process one frame per second for simulation
+    frame_interval = max(1, int(fps))  # roughly one frame per second
+
+    skin_lower = (0, 133, 77)
+    skin_upper = (255, 173, 127)
+    red_lower = (0, 0, 120)
+    red_upper = (80, 80, 255)
+
+    def ratio_in_range(img, lower, upper):
+        mask = cv2.inRange(img, lower, upper)
+        return cv2.countNonZero(mask) / (img.shape[0] * img.shape[1])
+
+    detected = []
+
+    window = deque(maxlen=3)
 
     for i in range(frame_count):
         ret, frame = cap.read()
         if not ret:
             break
 
-        # Process frames at a reduced interval to simulate processing power
         if i % frame_interval == 0:
             current_time_seconds = i / fps
-            
-            # --- Placeholder for AI Model Prediction ---
-            # In a real scenario, you would preprocess the 'frame' and
-            # feed it to your loaded AI models (e.g., nudity_model.predict(preprocessed_frame))
-            # and get a confidence score.
+            ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
+            skin_ratio = ratio_in_range(ycrcb, skin_lower, skin_upper)
+            red_ratio = ratio_in_range(frame, red_lower, red_upper)
 
-            # Simulate detection based on frame number (for demonstration)
-            simulated_nudity_score = 0.0
-            simulated_violence_score = 0.0
+            window.append((current_time_seconds, skin_ratio, red_ratio))
 
-            if 20 <= current_time_seconds <= 25: # Simulate a nudity scene
-                simulated_nudity_score = 0.9
-            if 40 <= current_time_seconds <= 45: # Simulate a violence scene
-                simulated_violence_score = 0.95
-            if 70 <= current_time_seconds <= 72: # Another short violence scene
-                simulated_violence_score = 0.8
-
-            if nudity_enabled and simulated_nudity_score >= nudity_threshold:
+            if nudity_enabled and skin_ratio >= nudity_threshold:
                 actions.append({
                     "type": "nudity_detection",
                     "start_time": current_time_seconds,
-                    "end_time": current_time_seconds + 1, # Assume 1 second duration for simplicity
-                    "confidence": simulated_nudity_score,
+                    "end_time": current_time_seconds + 1,
+                    "confidence": skin_ratio,
                     "action_suggestion": nudity_settings.get('action', 'blur')
                 })
-                print(f"  Detected nudity at {current_time_seconds:.2f}s (Score: {simulated_nudity_score:.2f})")
+                print(f"  Nudity heuristic triggered at {current_time_seconds:.2f}s (ratio={skin_ratio:.2f})")
 
-            if violence_enabled and simulated_violence_score >= violence_threshold:
+            if violence_enabled and red_ratio >= violence_threshold:
                 actions.append({
                     "type": "violence_detection",
                     "start_time": current_time_seconds,
-                    "end_time": current_time_seconds + 1, # Assume 1 second duration
-                    "confidence": simulated_violence_score,
+                    "end_time": current_time_seconds + 1,
+                    "confidence": red_ratio,
                     "action_suggestion": violence_settings.get('action', 'skip_scene')
                 })
-                print(f"  Detected violence at {current_time_seconds:.2f}s (Score: {simulated_violence_score:.2f})")
+                print(f"  Violence heuristic triggered at {current_time_seconds:.2f}s (ratio={red_ratio:.2f})")
 
     cap.release()
     print(f"Finished video scanning. Found {len(actions)} potential issues.")

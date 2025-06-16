@@ -70,10 +70,15 @@ To run the graphical user interface (GUI), simply execute main.py without any ar
 python main.py
 
 Running in CLI Mode
-To run CleanMedia in command-line interface (CLI) mode:
+The CLI now includes two sub-commands:
 
-python main.py --cli
-# Further CLI arguments will be defined as functionality is added.
+```
+python main.py --cli build <video_path> --subtitle <srt_file> --output <metadata_dir>
+python main.py --cli play <video_path> <metadata_json>
+```
+
+The `build` command generates metadata while `play` launches the optional
+player overlay.
 
 Configuration
 config/filters.json
@@ -110,15 +115,15 @@ Input: You provide a video file (e.g., .mp4) and optionally a subtitle file (e.g
 
 Scanning:
 
-subtitle_parser.py: Scans subtitles for profane words based on filters.json and prepares an action list for muting/replacing.
+subtitle_parser.py: Scans subtitles for profane words based on `filters.json` and prepares an action list for muting or replacing.
 
-video_scanner.py: (Future development) Uses AI models to analyze video frames for nudity or violence and identifies corresponding time segments.
+video_scanner.py: Uses lightweight OpenCV heuristics to flag potential nudity or violence. The logic can be replaced with real ML models.
 
 Metadata Generation: metadata_builder.py combines findings from subtitle parsing and video scanning into a your_movie.json file, which includes timestamps and actions (mute, skip, replace). A human-readable preview (your_movie_preview.txt) is also generated.
 
 Playback/Export:
 
-player_overlay.py: (Optional) An advanced feature to control a media player (like VLC) in real-time based on the generated metadata, muting audio or skipping scenes.
+player_overlay.py: Optional overlay that can drive VLC in real time (falls back to a simulation if `python-vlc` is not installed).
 
 Alternatively, you can use the metadata to process and export a your_movie_filtered.mp4 with segments removed or audio muted.
 

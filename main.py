@@ -2,6 +2,10 @@
 
 import os
 import sys
+import argparse
+
+from modules.metadata_builder import build_media_metadata
+from modules.player_overlay import MediaPlaybackController
 
 # Placeholder for GUI launcher
 def launch_gui():
@@ -10,18 +14,42 @@ def launch_gui():
     # from gui.launcher_gui import launch_tkinter_gui
     # launch_tkinter_gui()
 
-# Placeholder for CLI logic
-def run_cli():
-    print("Running CleanMedia in CLI mode.")
-    print("This is where your command-line processing logic would go.")
-    # Example: process media based on CLI arguments
-    # For now, just a message.
+def build_command(args):
+    """Handle the 'build' CLI command."""
+    build_media_metadata(args.video, args.subtitle, args.output)
+
+
+def play_command(args):
+    """Handle the 'play' CLI command."""
+    controller = MediaPlaybackController(args.video, args.metadata)
+    controller.play()
+    controller.stop()
+
+def run_cli(argv):
+    parser = argparse.ArgumentParser(description="CleanMedia command line")
+    subparsers = parser.add_subparsers(dest="command")
+
+    build_p = subparsers.add_parser("build", help="Generate metadata")
+    build_p.add_argument("video")
+    build_p.add_argument("--subtitle", "-s", default=None)
+    build_p.add_argument("--output", "-o", default="movie/metadata")
+    build_p.set_defaults(func=build_command)
+
+    play_p = subparsers.add_parser("play", help="Play video applying actions")
+    play_p.add_argument("video")
+    play_p.add_argument("metadata")
+    play_p.set_defaults(func=play_command)
+
+    args = parser.parse_args(argv)
+    if hasattr(args, "func"):
+        args.func(args)
+    else:
+        parser.print_help()
 
 def main():
-    # Basic logic to determine if GUI should be launched or CLI
-    # You can expand this to parse command-line arguments to choose mode
+    # Decide whether to run CLI or GUI
     if len(sys.argv) > 1 and sys.argv[1] == '--cli':
-        run_cli()
+        run_cli(sys.argv[2:])
     else:
         # Default to GUI if no specific mode is requested
         launch_gui()

@@ -5,11 +5,11 @@ import time
 import os
 import yaml
 
-# try:
-#     import vlc
-# except ImportError:
-#     print("Warning: python-vlc not installed. Real-time playback control will be simulated.")
-#     vlc = None # Set vlc to None if import fails
+try:
+    import vlc  # type: ignore
+except Exception:
+    print("Warning: python-vlc not installed. Real-time playback control will be simulated.")
+    vlc = None
 
 def load_settings(settings_path='config/settings.yaml'):
     """Loads global settings from a YAML file."""
@@ -43,15 +43,15 @@ class MediaPlaybackController:
 
     def initialize_player(self):
         """Initializes the VLC player instance."""
-        # if vlc:
-        #     self.instance = vlc.Instance()
-        #     self.player = self.instance.media_player_new()
-        #     media = self.instance.media_new(self.video_path)
-        #     self.player.set_media(media)
-        #     print(f"VLC player initialized for {self.video_path}")
-        # else:
-        print("VLC not available or simulation mode. Player initialization simulated.")
-        self.player = "simulated_player" # Placeholder for simulation
+        if vlc is not None:
+            self.instance = vlc.Instance()
+            self.player = self.instance.media_player_new()
+            media = self.instance.media_new(self.video_path)
+            self.player.set_media(media)
+            print(f"VLC player initialized for {self.video_path}")
+        else:
+            print("VLC not available or simulation mode. Player initialization simulated.")
+            self.player = "simulated_player"  # Placeholder for simulation
 
     def play(self):
         """Starts media playback."""
@@ -60,9 +60,9 @@ class MediaPlaybackController:
             print("\n--- Simulating Media Playback ---")
             print("Note: This is a simulation. For actual playback control, install 'python-vlc' and have VLC player installed.")
             self._simulate_playback()
-        # elif self.player:
-        #     self.player.play()
-        #     self._monitor_playback()
+        elif self.player:
+            self.player.play()
+            self._monitor_playback()
 
     def _simulate_playback(self):
         """Simulates playback and applies actions based on timestamps."""
@@ -87,14 +87,16 @@ class MediaPlaybackController:
                 break
         print("\nSimulation Finished.")
 
-    # def _monitor_playback(self):
-    #     """Monitors real VLC player playback and applies actions."""
-    #     while self.player.is_playing():
-    #         current_time_ms = self.player.get_time()
-    #         current_playback_time = current_time_ms / 1000.0 # Convert to seconds
-    #         self._check_and_apply_actions(current_playback_time)
-    #         time.sleep(0.1) # Check every 100ms
-    #     print("Playback finished.")
+    def _monitor_playback(self):
+        """Monitors real VLC player playback and applies actions."""
+        if not self.player or vlc is None:
+            return
+        while self.player.is_playing():
+            current_time_ms = self.player.get_time()
+            current_playback_time = current_time_ms / 1000.0
+            self._check_and_apply_actions(current_playback_time)
+            time.sleep(0.1)
+        print("Playback finished.")
 
     def _check_and_apply_actions(self, current_playback_time):
         """Checks for pending actions and applies them."""
@@ -123,20 +125,14 @@ class MediaPlaybackController:
               f"(Duration: {end_time-start_time:.2f}s) ---")
 
         if action_type == "profanity_mute":
-            # if self.player and vlc:
-            #     self.player.audio_set_volume(0) # Mute audio
-            #     print(f"  Muting audio for profanity: '{action.get('matched_word')}'")
-            # else:
-            print(f"  [SIMULATED] Muting audio for profanity: '{action.get('matched_word')}'")
-            # Schedule unmute after the duration of the profanity
-            # This would require a timer or event listener in a real player
-            # For simulation, we'll just log
-            # time.sleep(end_time - current_playback_time) # Simulate mute duration
-            # if self.player and vlc:
-            #     self.player.audio_set_volume(100) # Unmute audio
-            #     print("  Audio unmuted.")
-            # else:
-            #     print("  [SIMULATED] Audio unmuted after simulated duration.")
+            if self.player and vlc:
+                self.player.audio_set_volume(0)
+                print(f"  Muting audio for profanity: '{action.get('matched_word')}'")
+                time.sleep(end_time - current_playback_time)
+                self.player.audio_set_volume(100)
+                print("  Audio unmuted.")
+            else:
+                print(f"  [SIMULATED] Muting audio for profanity: '{action.get('matched_word')}'")
         elif action_type == "nudity_detection":
             if action_suggestion == "blur":
                 print(f"  [SIMULATED] Applying blur effect for nudity from {start_time:.2f}s to {end_time:.2f}s.")
@@ -149,11 +145,20 @@ class MediaPlaybackController:
                 print(f"  [SIMULATED] Nudity detected, suggested action: {action_suggestion}")
         elif action_type == "violence_detection":
             if action_suggestion == "skip_scene":
-                print(f"  [SIMULATED] Skipping violence scene from {start_time:.2f}s to {end_time:.2f}s.")
-                # if self.player and vlc:
-                #     self.player.set_time(int(end_time * 1000)) # Jump to end of scene
+                if self.player and vlc:
+                    self.player.set_time(int(end_time * 1000))
+                    print(f"  Skipping violence scene from {start_time:.2f}s to {end_time:.2f}s.")
+                else:
+                    print(f"  [SIMULATED] Skipping violence scene from {start_time:.2f}s to {end_time:.2f}s.")
             elif action_suggestion == "mute_audio":
-                 print(f"  [SIMULATED] Muting audio for violence from {start_time:.2f}s to {end_time:.2f}s.")
+                if self.player and vlc:
+                    self.player.audio_set_volume(0)
+                    print(f"  Muting audio for violence from {start_time:.2f}s to {end_time:.2f}s.")
+                    time.sleep(end_time - current_playback_time)
+                    self.player.audio_set_volume(100)
+                    print("  Audio unmuted.")
+                else:
+                    print(f"  [SIMULATED] Muting audio for violence from {start_time:.2f}s to {end_time:.2f}s.")
             else:
                 print(f"  [SIMULATED] Violence detected, suggested action: {action_suggestion}")
         else:
@@ -163,12 +168,12 @@ class MediaPlaybackController:
 
     def stop(self):
         """Stops media playback."""
-        # if self.player and vlc:
-        #     self.player.stop()
-        #     self.instance.release()
-        #     print("VLC player stopped.")
-        # else:
-        print("Simulated player stopped.")
+        if self.player and vlc:
+            self.player.stop()
+            self.instance.release()
+            print("VLC player stopped.")
+        else:
+            print("Simulated player stopped.")
 
 
 if __name__ == '__main__':
