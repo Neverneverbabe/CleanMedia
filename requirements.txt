@@ -3,10 +3,10 @@
 # Example dependencies (you'll add more as your project grows)
 # For GUI
 Pillow
-tk
+# Tkinter comes bundled with Python; no separate package needed
 # For media processing (placeholders, actual libraries might vary)
 opencv-python-headless # For video processing
-pysrt                  # For subtitle parsing
+srt                    # For subtitle parsing
 PyYAML                 # For YAML configuration
 # For potential AI models (example, replace with actual)
 tensorflow
