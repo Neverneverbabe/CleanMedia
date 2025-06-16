@@ -1,4 +1,14 @@
-opencv-python
-numpy
-pillow
-pyyaml
+# CleanMedia/requirements.txt
+
+# Example dependencies (you'll add more as your project grows)
+# For GUI
+Pillow
+tk
+# For media processing (placeholders, actual libraries might vary)
+opencv-python-headless # For video processing
+pysrt                  # For subtitle parsing
+PyYAML                 # For YAML configuration
+# For potential AI models (example, replace with actual)
+tensorflow
+# For more advanced media playback (if using player_overlay with VLC)
+# python-vlc
