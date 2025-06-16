@@ -1,0 +1,5 @@
+default_paths:
+  input: movie/input
+  output: movie/output
+playback:
+  speed: 1.0
