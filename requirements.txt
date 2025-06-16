@@ -1,6 +1,0 @@
-python-vlc
-transformers
-torch
-opencv-python
-ffmpeg-python
-tqdm
