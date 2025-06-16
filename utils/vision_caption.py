@@ -1,1 +1,0 @@
-# Runs BLIP/CLIP model on frames to generate captions

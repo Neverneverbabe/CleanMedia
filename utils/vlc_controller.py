@@ -1,1 +1,0 @@
-# Controls VLC to mute or skip flagged scenes
