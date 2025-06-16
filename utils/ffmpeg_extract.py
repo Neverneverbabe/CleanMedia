@@ -1,0 +1,1 @@
+# Extracts frames from video using ffmpeg

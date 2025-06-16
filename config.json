@@ -1,0 +1,13 @@
+{
+  "filters": {
+    "nudity": true,
+    "profanity": true,
+    "sexual_content": true,
+    "violence": false
+  },
+  "action": {
+    "nudity": "skip",
+    "profanity": "mute",
+    "sexual_content": "skip"
+  }
+}

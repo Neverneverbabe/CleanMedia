@@ -1,0 +1,1 @@
+# Scans subtitles or transcript for profanity words

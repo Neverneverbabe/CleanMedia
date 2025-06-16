@@ -1,0 +1,1 @@
+# Sends captions to LM Studio and returns nudity flags
