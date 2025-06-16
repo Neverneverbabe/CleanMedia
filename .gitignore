@@ -1,0 +1,12 @@
+# Python caches
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv/
+
+# Media files
+movie/input/*
+!movie/input/.gitkeep
+movie/output/*
+!movie/output/.gitkeep
