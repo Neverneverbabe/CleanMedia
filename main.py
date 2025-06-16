@@ -3,19 +3,37 @@
 import os
 import sys
 
-# Placeholder for GUI launcher
+# Real GUI launcher
 def launch_gui():
-    print("Launching GUI...")
-    # In a real application, you would import and run the Tkinter GUI here:
-    # from gui.launcher_gui import launch_tkinter_gui
-    # launch_tkinter_gui()
+    from gui.launcher_gui import launch_tkinter_gui
+    launch_tkinter_gui()
 
-# Placeholder for CLI logic
+# Real CLI logic
 def run_cli():
-    print("Running CleanMedia in CLI mode.")
-    print("This is where your command-line processing logic would go.")
-    # Example: process media based on CLI arguments
-    # For now, just a message.
+    import argparse
+    parser = argparse.ArgumentParser(description="CleanMedia CLI")
+    parser.add_argument('--video', type=str, help='Path to input video file')
+    parser.add_argument('--subtitle', type=str, help='Path to input subtitle file (optional)')
+    parser.add_argument('--output', type=str, default='movie/metadata', help='Output directory for metadata and preview')
+    parser.add_argument('--play', action='store_true', help='Simulate playback after processing')
+    args = parser.parse_args(sys.argv[2:] if sys.argv[1] == '--cli' else sys.argv[1:])
+
+    if not args.video:
+        print("Error: --video argument is required.")
+        return
+    video_file = args.video
+    subtitle_file = args.subtitle
+    output_dir = args.output
+
+    from modules.metadata_builder import build_media_metadata
+    meta = build_media_metadata(video_file, subtitle_file, output_dir)
+    preview_path = os.path.join(output_dir, os.path.splitext(os.path.basename(video_file))[0] + '_preview.txt')
+    print(f"Metadata and preview generated. Preview: {preview_path}")
+    if args.play:
+        from modules.player_overlay import MediaPlaybackController
+        metadata_path = os.path.join(output_dir, os.path.splitext(os.path.basename(video_file))[0] + '.json')
+        controller = MediaPlaybackController(video_file, metadata_path)
+        controller.play()
 
 def main():
     # Basic logic to determine if GUI should be launched or CLI

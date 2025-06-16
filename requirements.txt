@@ -10,5 +10,5 @@ srt                    # For subtitle parsing
 PyYAML                 # For YAML configuration
 # For potential AI models (example, replace with actual)
 tensorflow
-# For more advanced media playback (if using player_overlay with VLC)
-# python-vlc
+# For advanced media playback (optional, for player_overlay)
+python-vlc

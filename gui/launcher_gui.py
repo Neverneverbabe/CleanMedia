@@ -108,21 +108,52 @@ class CleanMediaGUI:
         self.filters['nudity']['enabled'] = self.nudity_var.get()
         self.filters['violence']['enabled'] = self.violence_var.get()
 
-        # Save updated filters (optional, but good for persistence)
+        # Save updated filters
         try:
             with open(FILTERS_PATH, 'w') as f:
                 json.dump(self.filters, f, indent=2)
         except Exception as e:
             messagebox.showwarning("Warning", f"Could not save filter settings: {e}")
 
-        messagebox.showinfo("Processing",
-                            f"Processing '{os.path.basename(input_file)}'...\n"
-                            f"Filters enabled: Profanity={self.profanity_var.get()}, "
-                            f"Nudity={self.nudity_var.get()}, Violence={self.violence_var.get()}\n"
-                            "This is a placeholder action. Real processing would happen now.")
-        # Here you would call your backend processing modules:
-        # e.g., from modules.metadata_builder import build_metadata
-        # build_metadata(input_file, output_dir, self.filters)
+        # Determine if input is video or subtitle
+        video_file = None
+        subtitle_file = None
+        if input_file.lower().endswith(('.mp4', '.avi', '.mkv')):
+            video_file = input_file
+            # Try to find a matching subtitle file
+            base = os.path.splitext(input_file)[0]
+            for ext in ['.srt', '.sub']:
+                candidate = base + ext
+                if os.path.exists(candidate):
+                    subtitle_file = candidate
+                    break
+        elif input_file.lower().endswith('.srt'):
+            subtitle_file = input_file
+            # Try to find a matching video file
+            base = os.path.splitext(input_file)[0]
+            for ext in ['.mp4', '.avi', '.mkv']:
+                candidate = base + ext
+                if os.path.exists(candidate):
+                    video_file = candidate
+                    break
+        else:
+            messagebox.showerror("Error", "Unsupported file type. Please select a video or subtitle file.")
+            return
+
+        # Import and run backend processing
+        try:
+            from modules.metadata_builder import build_media_metadata
+            meta = build_media_metadata(video_file, subtitle_file, output_dir)
+            preview_path = os.path.join(output_dir, os.path.splitext(os.path.basename(video_file))[0] + '_preview.txt')
+            messagebox.showinfo("Processing Complete", f"Metadata and preview generated.\nPreview: {preview_path}")
+            # Optionally, offer to launch playback simulation
+            if messagebox.askyesno("Playback", "Do you want to simulate playback with filtering?"):
+                from modules.player_overlay import MediaPlaybackController
+                metadata_path = os.path.join(output_dir, os.path.splitext(os.path.basename(video_file))[0] + '.json')
+                controller = MediaPlaybackController(video_file, metadata_path)
+                controller.play()
+        except Exception as e:
+            messagebox.showerror("Error", f"Processing failed: {e}")
 
 def launch_tkinter_gui():
     root = tk.Tk()

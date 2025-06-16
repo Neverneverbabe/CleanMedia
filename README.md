@@ -64,6 +64,7 @@ Once your virtual environment is active, install the required packages:
 pip install -r requirements.txt
 
 Usage
+
 Launching the GUI
 To run the graphical user interface (GUI), simply execute main.py without any arguments:
 
@@ -72,8 +73,18 @@ python main.py
 Running in CLI Mode
 To run CleanMedia in command-line interface (CLI) mode:
 
-python main.py --cli
-# Further CLI arguments will be defined as functionality is added.
+python main.py --cli --video path/to/your_movie.mp4 --subtitle path/to/your_movie.srt --output movie/metadata --play
+
+`--video` (required): Path to the input video file.
+`--subtitle` (optional): Path to the subtitle file.
+`--output` (optional): Output directory for metadata and preview (default: movie/metadata).
+`--play` (optional): Simulate playback after processing.
+
+How It Works (Pipeline)
+
+Input: You provide a video file (and optionally a subtitle file).
+Processing: The pipeline parses subtitles, scans video, and builds metadata and a preview report.
+Playback: You can simulate playback with filtering actions using the player overlay.
 
 Configuration
 config/filters.json
