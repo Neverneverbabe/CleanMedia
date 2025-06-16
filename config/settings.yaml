@@ -1,5 +1,31 @@
-default_paths:
-  input: movie/input
-  output: movie/output
-playback:
-  speed: 1.0
+# CleanMedia/config/settings.yaml
+
+# Global user preferences for CleanMedia
+
+# Default input directory for media files
+default_input_directory: "movie/input"
+
+# Default output directory for processed media
+default_output_directory: "movie/output"
+
+# Preferred media player for overlay (e.g., "vlc", "mpv")
+# This setting is primarily for the player_overlay module.
+preferred_player: "vlc"
+
+# Automatically load filters on startup
+auto_load_filters: true
+
+# Enable verbose logging for debugging
+verbose_logging: false
+
+# Theme preference for GUI (e.g., "light", "dark")
+gui_theme: "light"
+
+# Maximum number of recent files to display in GUI history
+max_recent_files: 5
+
+# Playback speed multiplier (1.0 is normal speed)
+playback_speed: 1.0
+
+# Subtitle encoding (e.g., 'utf-8', 'latin-1')
+subtitle_encoding: "utf-8"
