@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from datetime import timedelta
 
 # Assuming these modules exist and have the specified functions
@@ -58,7 +59,7 @@ def build_media_metadata(video_path, subtitle_path=None, output_dir='movie/metad
     metadata = {
         "media_file": os.path.basename(video_path),
         "subtitle_file": os.path.basename(subtitle_path) if subtitle_path else None,
-        "processed_at": os.strftime("%Y-%m-%d %H:%M:%S"),
+        "processed_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "filters_applied": {
             "profanity": filters.get('profanity', {}).get('enabled', False),
             "nudity": filters.get('nudity', {}).get('enabled', False),
