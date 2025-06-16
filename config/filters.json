@@ -1,5 +1,17 @@
 {
-    "profanity": true,
-    "nudity": true,
-    "violence": true
+  "profanity": {
+    "enabled": true,
+    "word_list": ["damn", "hell", "shit", "fuck", "bitch", "ass"],
+    "replace_with": "[censored]"
+  },
+  "nudity": {
+    "enabled": false,
+    "detection_threshold": 0.75,
+    "action": "blur"
+  },
+  "violence": {
+    "enabled": false,
+    "detection_threshold": 0.65,
+    "action": "skip_scene"
+  }
 }
