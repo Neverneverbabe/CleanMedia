@@ -5,17 +5,14 @@ import os
 import time
 from datetime import timedelta
 
+# Import from the centralized config manager
+from modules.config_manager import load_filters
+
 # Assuming these modules exist and have the specified functions
-from modules.subtitle_parser import parse_and_filter_subtitles, load_filters as load_subtitle_filters
-from modules.video_scanner import scan_video_for_content, load_filters as load_video_filters
-
-
-def load_config_filters(filters_path='config/filters.json'):
-    """Loads combined filter settings from config/filters.json."""
-    if os.path.exists(filters_path):
-        with open(filters_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {}
+# We'll import them inside build_media_metadata to avoid circular imports
+# when config_manager imports them or launcher_gui imports metadata_builder.
+subtitle_parser = None
+video_scanner = None
 
 def format_timedelta(td):
     """Formats a timedelta object into HH:MM:SS.mmm string."""
@@ -26,7 +23,7 @@ def format_timedelta(td):
     return f"{hours:02}:{minutes:02}:{seconds:02}.{milliseconds:03}"
 
 
-def build_media_metadata(video_path, subtitle_path=None, output_dir='movie/metadata'):
+def build_media_metadata(video_path, subtitle_path=None, output_dir='movie/metadata', log_callback=None):
     """
     Builds a comprehensive metadata JSON for a media file, combining
     subtitle filtering results and video scanning results.
@@ -35,21 +32,28 @@ def build_media_metadata(video_path, subtitle_path=None, output_dir='movie/metad
         video_path (str): Path to the input video file.
         subtitle_path (str, optional): Path to the input subtitle file (SRT).
         output_dir (str, optional): Directory to save metadata and preview files.
+        log_callback (callable, optional): Function to call for logging messages to GUI.
 
     Returns:
         dict: The generated metadata dictionary.
     """
-    print(f"Building metadata for video: {video_path}")
+    def log(message):
+        if log_callback:
+            log_callback(message)
+        else:
+            print(message)
+
+    log(f"Building metadata for video: {video_path}")
     if subtitle_path:
-        print(f"Using subtitles from: {subtitle_path}")
+        log(f"Using subtitles from: {subtitle_path}")
 
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
-    # Load filter settings
-    filters = load_config_filters()
+    # Load filter settings from the centralized manager
+    filters = load_filters()
     if not filters:
-        print("Warning: Could not load filters.json. Proceeding with default/empty filters.")
+        log("Warning: Could not load filters.json. Proceeding with default/empty filters.")
 
     media_filename = os.path.splitext(os.path.basename(video_path))[0]
     metadata_json_path = os.path.join(output_dir, f"{media_filename}.json")
@@ -77,9 +81,15 @@ def build_media_metadata(video_path, subtitle_path=None, output_dir='movie/metad
 
     # 1. Process Subtitles for Profanity
     subtitle_actions = []
-    if subtitle_path and os.path.exists(subtitle_path) and filters.get('profanity', {}).get('enabled', False):
-        print("Processing subtitles for profanity...")
-        _, filtered_subs, sub_actions = parse_and_filter_subtitles(subtitle_path, filters)
+    profanity_enabled = filters.get('profanity', {}).get('enabled', False)
+    if subtitle_path and os.path.exists(subtitle_path) and profanity_enabled:
+        log("Processing subtitles for profanity...")
+        global subtitle_parser
+        if subtitle_parser is None:
+            from modules.subtitle_parser import parse_and_filter_subtitles
+            subtitle_parser = parse_and_filter_subtitles
+
+        _, filtered_subs, sub_actions = subtitle_parser(subtitle_path, filters, log_callback)
         subtitle_actions.extend(sub_actions)
         metadata['actions'].extend(sub_actions)
 
@@ -94,17 +104,25 @@ def build_media_metadata(video_path, subtitle_path=None, output_dir='movie/metad
             preview_log_lines.append("  No profanity detected in subtitles.\n")
         preview_log_lines.append("\n")
     elif subtitle_path and not os.path.exists(subtitle_path):
-        print(f"Subtitle file not found at {subtitle_path}. Skipping subtitle processing.")
+        log(f"Subtitle file not found at {subtitle_path}. Skipping subtitle processing.")
         preview_log_lines.append(f"Subtitle file not found at {subtitle_path}. Subtitle processing skipped.\n\n")
     else:
-        print("Subtitle path not provided or profanity filter disabled. Skipping subtitle processing.")
+        log("Subtitle path not provided or profanity filter disabled. Skipping subtitle processing.")
         preview_log_lines.append("Subtitle processing skipped (no subtitle provided or filter disabled).\n\n")
 
     # 2. Scan Video for Nudity/Violence
     video_content_actions = []
-    if os.path.exists(video_path) and (filters.get('nudity', {}).get('enabled', False) or filters.get('violence', {}).get('enabled', False)):
-        print("Scanning video for nudity and violence...")
-        video_actions = scan_video_for_content(video_path, filters)
+    nudity_enabled = filters.get('nudity', {}).get('enabled', False)
+    violence_enabled = filters.get('violence', {}).get('enabled', False)
+
+    if os.path.exists(video_path) and (nudity_enabled or violence_enabled):
+        log("Scanning video for nudity and violence...")
+        global video_scanner
+        if video_scanner is None:
+            from modules.video_scanner import scan_video_for_content
+            video_scanner = scan_video_for_content
+
+        video_actions = video_scanner(video_path, filters, log_callback)
         video_content_actions.extend(video_actions)
         metadata['actions'].extend(video_actions)
 
@@ -114,9 +132,12 @@ def build_media_metadata(video_path, subtitle_path=None, output_dir='movie/metad
             grouped_actions = []
             if video_actions:
                 current_group = None
-                for action in sorted(video_actions, key=lambda x: x['start_time']):
+                # Sort actions by start time to ensure correct grouping
+                sorted_video_actions = sorted(video_actions, key=lambda x: x['start_time'])
+                for action in sorted_video_actions:
+                    # Merge if same type and overlaps or is very close (e.g., within 1 second)
                     if current_group and action['type'] == current_group['type'] and \
-                       action['start_time'] <= current_group['end_time'] + 2: # Merge if within 2 seconds
+                       action['start_time'] <= current_group['end_time'] + 1:
                         current_group['end_time'] = max(current_group['end_time'], action['end_time'])
                     else:
                         if current_group:
@@ -135,30 +156,30 @@ def build_media_metadata(video_path, subtitle_path=None, output_dir='movie/metad
             preview_log_lines.append("  No nudity or violence detected in video.\n")
         preview_log_lines.append("\n")
     elif not os.path.exists(video_path):
-        print(f"Video file not found at {video_path}. Skipping video scanning.")
+        log(f"Video file not found at {video_path}. Skipping video scanning.")
         preview_log_lines.append(f"Video file not found at {video_path}. Video scanning skipped.\n\n")
     else:
-        print("Nudity/Violence filters disabled. Skipping video scanning.")
-        preview_log_lines.append("Video scanning skipped (filters disabled).\n\n")
+        log("Nudity/Violence filters disabled or no video provided. Skipping video scanning.")
+        preview_log_lines.append("Video scanning skipped (filters disabled or no video provided).\n\n")
 
-    # Sort actions by start_time for chronological processing
+    # Sort all actions by start_time for chronological processing
     metadata['actions'].sort(key=lambda x: x['start_time'])
 
     # Save metadata JSON
     try:
         with open(metadata_json_path, 'w', encoding='utf-8') as f:
             json.dump(metadata, f, indent=4)
-        print(f"Metadata saved to: {metadata_json_path}")
+        log(f"Metadata saved to: {metadata_json_path}")
     except Exception as e:
-        print(f"Error saving metadata JSON: {e}")
+        log(f"Error saving metadata JSON: {e}")
 
     # Save human-readable preview log
     try:
         with open(preview_txt_path, 'w', encoding='utf-8') as f:
             f.writelines(preview_log_lines)
-        print(f"Preview log saved to: {preview_txt_path}")
+        log(f"Preview log saved to: {preview_txt_path}")
     except Exception as e:
-        print(f"Error saving preview log: {e}")
+        log(f"Error saving preview log: {e}")
 
     return metadata
 
@@ -207,7 +228,8 @@ What the fuck was that shit?
         "profanity": {
             "enabled": True,
             "word_list": ["damn", "hell", "fuck", "shit"],
-            "replace_with": "[BLOCKED]"
+            "replace_with": "[BLOCKED]",
+            "action": "mute_audio"
         },
         "nudity": {
             "enabled": True,
@@ -217,7 +239,7 @@ What the fuck was that shit?
         "violence": {
             "enabled": True,
             "detection_threshold": 0.6,
-            "action": "jump_to_end"
+            "action": "skip_scene"
         }
     }
     with open('config/filters.json', 'w', encoding='utf-8') as f:
